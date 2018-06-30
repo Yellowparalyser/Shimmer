@@ -1,16 +1,22 @@
 package com.example.adammaziakowski.shimmer;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -21,37 +27,41 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.shimmerresearch.android.Shimmer;
+import com.shimmerresearch.android.guiUtilities.ShimmerBluetoothDialog;
+import com.shimmerresearch.android.shimmerService.ShimmerService;
+import com.shimmerresearch.bluetooth.ShimmerBluetooth;
+import com.shimmerresearch.driver.CallbackObject;
+import com.shimmerresearch.driver.Configuration;
+import com.shimmerresearch.driver.FormatCluster;
+import com.shimmerresearch.driver.ObjectCluster;
 
+import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+import static com.shimmerresearch.android.guiUtilities.ShimmerBluetoothDialog.EXTRA_DEVICE_ADDRESS;
+
+public class MainActivity extends AppCompatActivity  {
     private static final String TAG = "MainActivity";
-    private SensorManager sensorManager;
-    private Sensor accelerometer;
-    private  Sensor sensors;
+
 
     private LineChart chart;
     private Thread thread;
     private boolean plotData = true;
     TextView textView;
 
+    Shimmer shimmer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+        shimmer = new Shimmer(mHandler);
 
-        List<Sensor> sensors = sensorManager.getSensorList(Sensor.TYPE_ALL);
+        connectDevice();
 
-        for(int i=0; i<sensors.size(); i++){
-            Log.d(TAG, "onCreate: Sensor "+ i + ": " + sensors.get(i).toString());
-        }
-
-        if (accelerometer != null) {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-        }
 
         chart = findViewById(R.id.chart);
         textView = findViewById(R.id.textView);
@@ -106,11 +116,102 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         chart.getXAxis().setDrawGridLines(false);
         chart.setDrawBorders(false);
 
-//        feedMultiple();
-
     }
 
-    private void addEntry(SensorEvent event) {
+    @SuppressLint("HandlerLeak")
+    Handler mHandler = new Handler() {
+
+        @Override
+        public void handleMessage(Message msg) {
+
+            switch (msg.what) {
+                case ShimmerBluetooth.MSG_IDENTIFIER_DATA_PACKET:
+                    if ((msg.obj instanceof ObjectCluster)) {
+
+                        ObjectCluster objectCluster = (ObjectCluster) msg.obj;
+                        Log.i(TAG, objectCluster.mSensorDataList.toString());
+
+                        //Retrieve all possible formats for the current sensor device:
+                        Collection<FormatCluster> allFormats = objectCluster.getCollectionOfFormatClusters(Configuration.Shimmer3.ObjectClusterSensorName.TIMESTAMP);
+                        FormatCluster timeStampCluster = ((FormatCluster)ObjectCluster.returnFormatCluster(allFormats,"CAL"));
+                        double timeStampData = timeStampCluster.mData;
+                        Log.i(TAG, "Time Stamp: " + timeStampData);
+                        allFormats = objectCluster.getCollectionOfFormatClusters(Configuration.Shimmer3.ObjectClusterSensorName.GSR_CONDUCTANCE);
+                        FormatCluster conductanceCluster = ((FormatCluster)ObjectCluster.returnFormatCluster(allFormats, "CAL"));
+                        if (conductanceCluster!=null) {
+                            float conductance = (float) conductanceCluster.mData;
+                            addEntry(conductance);
+                            Log.i(TAG, "conductance: " + conductance);
+                        }else{
+                            Log.i(TAG, "null");
+                        }
+                    }
+                    break;
+                case Shimmer.MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(Shimmer.TOAST), Toast.LENGTH_SHORT).show();
+                    break;
+                case ShimmerBluetooth.MSG_IDENTIFIER_STATE_CHANGE:
+                    ShimmerBluetooth.BT_STATE state = null;
+                    String macAddress = "";
+
+                    if (msg.obj instanceof ObjectCluster) {
+                        state = ((ObjectCluster) msg.obj).mState;
+                        macAddress = ((ObjectCluster) msg.obj).getMacAddress();
+                    } else if (msg.obj instanceof CallbackObject) {
+                        state = ((CallbackObject) msg.obj).mState;
+                        macAddress = ((CallbackObject) msg.obj).mBluetoothAddress;
+                    }
+
+                    assert state != null;
+                    switch (state) {
+                        case CONNECTED:
+                            break;
+                        case CONNECTING:
+                            break;
+                        case STREAMING:
+                            break;
+                        case STREAMING_AND_SDLOGGING:
+                            break;
+                        case SDLOGGING:
+                            break;
+                        case DISCONNECTED:
+                            break;
+                    }
+                    break;
+            }
+            super.handleMessage(msg);
+        }
+    };
+
+    public void connectDevice() {
+        Intent intent = new Intent(getApplicationContext(), ShimmerBluetoothDialog.class);
+        startActivityForResult(intent, ShimmerBluetoothDialog.REQUEST_CONNECT_SHIMMER);
+    }
+
+    public void startStreaming(View v) throws InterruptedException, IOException {
+        shimmer.startStreaming();
+    }
+
+    public void stopStreaming(View v) throws IOException{
+        shimmer.stopStreaming();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(requestCode == 2) {
+            if (resultCode == Activity.RESULT_OK) {
+                //Get the Bluetooth mac address of the selected device:
+                String macAdd = data.getStringExtra(EXTRA_DEVICE_ADDRESS);
+                shimmer = new Shimmer(mHandler);
+                shimmer.connect(macAdd, "default");                  //Connect to the selected device
+            }
+
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+
+    private void addEntry(float mData) {
 
         LineData data = chart.getData();
 
@@ -124,8 +225,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 data.addDataSet(set);
             }
 
-//            data.addEntry(new Entry(set.getEntryCount(), (float) (Math.random() * 80) + 10f), 0);
-            data.addEntry(new Entry(set.getEntryCount(), event.values[0] + 5), 0);
+            data.addEntry(new Entry(set.getEntryCount(), mData), 0);
             data.notifyDataChanged();
 
             // let the chart know it's data has changed
@@ -141,6 +241,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+
     private LineDataSet createSet() {
 
         LineDataSet set = new LineDataSet(null, "Dynamic Data");
@@ -155,34 +256,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return set;
     }
 
-    private void feedMultiple() {
-
-        if (thread != null){
-            thread.interrupt();
-        }
-
-        thread = new Thread(new Runnable() {
-
-            @Override
-            public void run() {
-                while (true){
-                    if (thread.isInterrupted()) {
-                        textView.setText("Thread interrupted.");
-                    } else {
-                        plotData = true;
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-        });
-
-        thread.start();
-    }
 
     @Override
     protected void onPause() {
@@ -191,46 +264,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (thread != null) {
             thread.interrupt();
         }
-        sensorManager.unregisterListener(this);
 
     }
 
-    @Override
-    public final void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // Do something here if sensor accuracy changes.
-    }
-
-    @Override
-    public final void onSensorChanged(SensorEvent event) {
-        if(plotData){
-            addEntry(event);
-            plotData = false;
-        }
-    }
 
 
     @Override
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
     protected void onDestroy() {
-        sensorManager.unregisterListener(MainActivity.this);
         thread.interrupt();
         super.onDestroy();
     }
 
     public void buttonStartClicked(View view) {
-        feedMultiple();
+
+        try {
+            startStreaming(view);
+        } catch (InterruptedException | IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void buttonStopClicked(View view) {
-        sensorManager.unregisterListener(this);
+
+        try {
+            stopStreaming(view);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void buttonResumeClicked(View view) {
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+       // TBA
     }
 }
