@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -42,7 +43,7 @@ import java.util.List;
 
 import static com.shimmerresearch.android.guiUtilities.ShimmerBluetoothDialog.EXTRA_DEVICE_ADDRESS;
 
-public class MainActivity extends AppCompatActivity  {
+public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
 
@@ -57,6 +58,14 @@ public class MainActivity extends AppCompatActivity  {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+        SharedPreferences sharedPreferences = this.getSharedPreferences("PREFS", Context.MODE_PRIVATE);
+        if (!sharedPreferences.contains("TRESHOLD")) {
+            Intent intent = new Intent(this, CalibrationActivity.class);
+            startActivity(intent);
+        }
+
 
         shimmer = new Shimmer(mHandler);
 
@@ -133,16 +142,16 @@ public class MainActivity extends AppCompatActivity  {
 
                         //Retrieve all possible formats for the current sensor device:
                         Collection<FormatCluster> allFormats = objectCluster.getCollectionOfFormatClusters(Configuration.Shimmer3.ObjectClusterSensorName.TIMESTAMP);
-                        FormatCluster timeStampCluster = ((FormatCluster)ObjectCluster.returnFormatCluster(allFormats,"CAL"));
+                        FormatCluster timeStampCluster = ((FormatCluster) ObjectCluster.returnFormatCluster(allFormats, "CAL"));
                         double timeStampData = timeStampCluster.mData;
                         Log.i(TAG, "Time Stamp: " + timeStampData);
                         allFormats = objectCluster.getCollectionOfFormatClusters(Configuration.Shimmer3.ObjectClusterSensorName.GSR_CONDUCTANCE);
-                        FormatCluster conductanceCluster = ((FormatCluster)ObjectCluster.returnFormatCluster(allFormats, "CAL"));
-                        if (conductanceCluster!=null) {
+                        FormatCluster conductanceCluster = ((FormatCluster) ObjectCluster.returnFormatCluster(allFormats, "CAL"));
+                        if (conductanceCluster != null) {
                             float conductance = (float) conductanceCluster.mData;
                             addEntry(conductance);
                             Log.i(TAG, "conductance: " + conductance);
-                        }else{
+                        } else {
                             Log.i(TAG, "null");
                         }
                     }
@@ -192,13 +201,13 @@ public class MainActivity extends AppCompatActivity  {
         shimmer.startStreaming();
     }
 
-    public void stopStreaming(View v) throws IOException{
+    public void stopStreaming(View v) throws IOException {
         shimmer.stopStreaming();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == 2) {
+        if (requestCode == 2) {
             if (resultCode == Activity.RESULT_OK) {
                 //Get the Bluetooth mac address of the selected device:
                 String macAdd = data.getStringExtra(EXTRA_DEVICE_ADDRESS);
@@ -268,7 +277,6 @@ public class MainActivity extends AppCompatActivity  {
     }
 
 
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -299,6 +307,6 @@ public class MainActivity extends AppCompatActivity  {
     }
 
     public void buttonResumeClicked(View view) {
-       // TBA
+        // TBA
     }
 }
