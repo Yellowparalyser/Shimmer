@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Shimmer</string>
+    <string name="prepare">przygotuj się do pomiaru w fazie relaksu</string>
+    <string name="relax">pomiar w fazie relaksu</string>
+    <string name="prepare_stress">przygotuj się na fazę stresu</string>
+    <string name="stress">pomiar w fazie stresu</string>
 </resources>
