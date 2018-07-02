@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/colorSea"
     tools:context="com.example.adammaziakowski.shimmer.MainActivity">
 
     <com.github.mikephil.charting.charts.LineChart
@@ -18,25 +19,39 @@
 
     <Button
         android:id="@+id/buttonStart"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="100dp"
+        android:layout_height="30dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
-        android:text="Start"
+        android:background="@drawable/buttonshape"
         android:onClick="buttonStartClicked"
+        android:shadowColor="#4DEDFF"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="6"
+        android:text="Start"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chart" />
+        app:layout_constraintTop_toBottomOf="@+id/chart"
+        tools:textColor="#245366" />
 
     <Button
         android:id="@+id/buttonStop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="100dp"
+        android:layout_height="30dp"
         android:layout_marginEnd="8dp"
         android:layout_marginTop="16dp"
-        android:text="Stop"
+        android:background="@drawable/buttonshape"
         android:onClick="buttonStopClicked"
+        android:shadowColor="#4DEDFF"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="6"
+        android:text="Stop"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chart" />
+        app:layout_constraintTop_toBottomOf="@+id/chart"
+        tools:textColor="#245366" />
 
     <TextView
         android:id="@+id/textView"
@@ -51,16 +66,23 @@
 
     <Button
         android:id="@+id/buttonResume"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="100dp"
+        android:layout_height="30dp"
         android:layout_marginEnd="53dp"
         android:layout_marginStart="51dp"
         android:layout_marginTop="16dp"
-        android:text="Resume"
+        android:background="@drawable/buttonshape"
         android:onClick="buttonResumeClicked"
+        android:shadowColor="#4DEDFF"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="6"
+        android:text="Resume"
+        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@+id/buttonStop"
         app:layout_constraintStart_toEndOf="@+id/buttonStart"
-        app:layout_constraintTop_toBottomOf="@+id/chart" />
+        app:layout_constraintTop_toBottomOf="@+id/chart"
+        tools:textColor="#245366" />
 
 
 </android.support.constraint.ConstraintLayout>
